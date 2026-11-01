@@ -1,0 +1,337 @@
+{
+  "entities": {
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted administrator account record for role-based access control.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Player profile with Free Fire UID/IGN binding, 3-bucket wallet, and Refer & Earn state.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "ffUid": { "type": "string" },
+        "ffIgn": { "type": "string" },
+        "upiId": { "type": "string" },
+        "depositBalance": { "type": "number" },
+        "winningsBalance": { "type": "number" },
+        "bonusBalance": { "type": "number" },
+        "walletBalance": { "type": "number" },
+        "referralCode": { "type": "string" },
+        "referredBy": { "type": "string" },
+        "referralRewarded": { "type": "boolean" },
+        "totalReferrals": { "type": "integer" },
+        "referralBonusEarned": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "username",
+        "email",
+        "ffUid",
+        "ffIgn",
+        "upiId",
+        "depositBalance",
+        "winningsBalance",
+        "bonusBalance",
+        "walletBalance",
+        "referralCode",
+        "referredBy",
+        "referralRewarded",
+        "totalReferrals",
+        "referralBonusEarned",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ReferralCodeLookup": {
+      "title": "ReferralCodeLookup",
+      "description": "Maps a unique EXALOTE EXN referral code (e.g. EXN8F92A) to its owner userId.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "userId", "username", "createdAt"]
+    },
+    "PromoCode": {
+      "title": "PromoCode",
+      "description": "Deposit bonus promo code configuration (credited strictly to bonus_balance).",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "bonusPercent": { "type": "integer" },
+        "maxBonus": { "type": "number" },
+        "minDeposit": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "bonusPercent", "maxBonus", "minDeposit", "isActive", "createdAt", "updatedAt"]
+    },
+    "TournamentMatch": {
+      "title": "TournamentMatch",
+      "description": "Scheduled Free Fire MAX tournament match with custom room credentials and prize structure.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "categoryCode": { "type": "string" },
+        "categoryName": { "type": "string" },
+        "format": { "type": "string", "enum": ["Solo", "1v1", "2v2", "Duo", "Squad", "4v4"] },
+        "session": { "type": "string", "enum": ["morning", "evening"] },
+        "matchDate": { "type": "string" },
+        "startTime": { "type": "string" },
+        "startTimeEpochMs": { "type": "integer" },
+        "maxPlayers": { "type": "integer" },
+        "joinedCount": { "type": "integer" },
+        "registeredUids": { "type": "array" },
+        "entryFee": { "type": "number" },
+        "prizePool": { "type": "number" },
+        "perKillRate": { "type": "number" },
+        "rank1Prize": { "type": "number" },
+        "rank2Prize": { "type": "number" },
+        "rank3Prize": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["Upcoming", "Registration Closed", "Live", "Completed", "Cancelled"]
+        },
+        "roomId": { "type": "string" },
+        "roomPassword": { "type": "string" },
+        "roomPublished": { "type": "boolean" },
+        "mapName": { "type": "string" },
+        "matchRules": { "type": "string" },
+        "prizesDistributed": { "type": "boolean" },
+        "published": { "type": "boolean" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "title",
+        "categoryCode",
+        "categoryName",
+        "format",
+        "session",
+        "matchDate",
+        "startTime",
+        "startTimeEpochMs",
+        "maxPlayers",
+        "joinedCount",
+        "registeredUids",
+        "entryFee",
+        "prizePool",
+        "perKillRate",
+        "rank1Prize",
+        "rank2Prize",
+        "rank3Prize",
+        "status",
+        "roomId",
+        "roomPassword",
+        "roomPublished",
+        "mapName",
+        "matchRules",
+        "prizesDistributed",
+        "published",
+        "createdBy",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MatchRegistration": {
+      "title": "MatchRegistration",
+      "description": "Player registration for a match with slot assignment, team members, and fee breakdown.",
+      "type": "object",
+      "properties": {
+        "matchId": { "type": "string" },
+        "matchTitle": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "ffUid": { "type": "string" },
+        "ffIgn": { "type": "string" },
+        "status": { "type": "string", "enum": ["Approved", "Pending", "Rejected"] },
+        "feeStatus": { "type": "string", "enum": ["none", "paid", "refunded"] },
+        "entryFeePaid": { "type": "number" },
+        "bonusUsed": { "type": "number" },
+        "depositUsed": { "type": "number" },
+        "winningsUsed": { "type": "number" },
+        "slotNumber": { "type": "integer" },
+        "teamMembers": { "type": "array" },
+        "allUids": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "matchId",
+        "matchTitle",
+        "userId",
+        "username",
+        "ffUid",
+        "ffIgn",
+        "status",
+        "feeStatus",
+        "entryFeePaid",
+        "bonusUsed",
+        "depositUsed",
+        "winningsUsed",
+        "slotNumber",
+        "teamMembers",
+        "allUids",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MatchClaim": {
+      "title": "MatchClaim",
+      "description": "Player post-match result claim with kill/rank claim, screenshot preview, and optional hacker report.",
+      "type": "object",
+      "properties": {
+        "matchId": { "type": "string" },
+        "matchTitle": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "ffUid": { "type": "string" },
+        "ffIgn": { "type": "string" },
+        "claimedKills": { "type": "integer" },
+        "claimedRank": { "type": "integer" },
+        "screenshotBase64": { "type": "string" },
+        "screenshotMime": { "type": "string" },
+        "reportSuspectIgn": { "type": "string" },
+        "reportReason": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+        "awardedAmount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "matchId",
+        "matchTitle",
+        "userId",
+        "username",
+        "ffUid",
+        "ffIgn",
+        "claimedKills",
+        "claimedRank",
+        "screenshotBase64",
+        "screenshotMime",
+        "reportSuspectIgn",
+        "reportReason",
+        "status",
+        "awardedAmount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DepositRequest": {
+      "title": "DepositRequest",
+      "description": "Manual UPI deposit request with unique 12-digit UTR number and optional Promo Code bonus.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "amount": { "type": "number" },
+        "utrNumber": { "type": "string" },
+        "promoCode": { "type": "string" },
+        "bonusAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "username",
+        "amount",
+        "utrNumber",
+        "promoCode",
+        "bonusAmount",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WithdrawalRequest": {
+      "title": "WithdrawalRequest",
+      "description": "Withdrawal request from winnings_balance (min 50 INR, escrow deducted immediately).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "amount": { "type": "number" },
+        "upiId": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Completed", "Rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "username", "amount", "upiId", "status", "createdAt", "updatedAt"]
+    },
+    "WalletTransaction": {
+      "title": "WalletTransaction",
+      "description": "Immutable wallet transaction ledger entry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["deposit", "withdrawal", "entry_fee", "prize_payout", "refund", "bonus"]
+        },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "amount", "description", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Trusted administrator accounts."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles, 3-bucket wallets, and Refer & Earn state."
+    },
+    "/referral_codes/{code}": {
+      "schema": { "$ref": "#/entities/ReferralCodeLookup" },
+      "description": "Unique referral code directory mapping code to owner userId."
+    },
+    "/promo_codes/{code}": {
+      "schema": { "$ref": "#/entities/PromoCode" },
+      "description": "Active deposit promo codes (e.g. WELCOME20)."
+    },
+    "/matches/{matchId}": {
+      "schema": { "$ref": "#/entities/TournamentMatch" },
+      "description": "Scheduled Free Fire MAX tournament matches."
+    },
+    "/registrations/{registrationId}": {
+      "schema": { "$ref": "#/entities/MatchRegistration" },
+      "description": "Player match registrations and slot assignments."
+    },
+    "/claims/{claimId}": {
+      "schema": { "$ref": "#/entities/MatchClaim" },
+      "description": "Player post-match result claims, screenshots, and hacker reports."
+    },
+    "/deposits/{depositId}": {
+      "schema": { "$ref": "#/entities/DepositRequest" },
+      "description": "Manual UPI deposit requests with 12-digit UTR numbers and promo bonuses."
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": { "$ref": "#/entities/WithdrawalRequest" },
+      "description": "Winnings withdrawal requests with immediate escrow."
+    },
+    "/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/WalletTransaction" },
+      "description": "Immutable wallet transaction audit log."
+    }
+  }
+}

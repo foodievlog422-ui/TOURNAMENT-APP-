@@ -1,0 +1,6 @@
+{
+  "name": "Exalote Esports",
+  "description": "Free Fire MAX tournament platform with real-time rooms, 3-bucket wallet, and live result verification.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

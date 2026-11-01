@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EXALOTE EXN — Free Fire MAX Paid Tournament Web Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #090D16;
+      color: #F8FAFC;
+    }
+    h1, h2, h3, .font-display {
+      font-family: 'Rajdhani', sans-serif;
+      letter-spacing: 0.03em;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .glass-card {
+      background: linear-gradient(145deg, rgba(19, 27, 46, 0.95), rgba(13, 19, 34, 0.95));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="sticky top-0 z-30 glass-card border-b border-slate-800 px-4 py-3">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center font-display text-xl font-bold text-black shadow-lg shadow-orange-500/20">
+          EXN
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-bold tracking-wider text-white">EXALOTE EXN WEB</h1>
+            <span id="roleBadge" class="text-[11px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40">
+              ADMIN + PLAYER
+            </span>
+          </div>
+          <p id="ffBindingHeader" class="text-xs text-amber-400">FF UID Unbound • Bind in Profile</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="switchTab('wallet')" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/90 border border-amber-500/30 hover:border-amber-400 transition">
+          <span class="text-xs text-slate-400">Wallet:</span>
+          <span id="headerWalletTotal" class="font-display font-bold text-base text-amber-400">₹170.00</span>
+        </button>
+        <button onclick="toggleAdminRoleForTesting()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-cyan-400 border border-cyan-500/30 transition">
+          Switch Role
+        </button>
+        <button onclick="openDbModal()" class="px-3 py-1.5 rounded-xl bg-orange-500/20 hover:bg-orange-500/30 text-xs font-semibold text-orange-400 border border-orange-500/40 transition">
+          Reset / Info
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- LIVE STATUS / ALERT BANNER -->
+  <div id="bannerContainer" class="max-w-6xl mx-auto w-full px-4 pt-3 hidden">
+    <div id="bannerBox" class="rounded-xl px-4 py-3 flex items-center justify-between text-sm font-medium">
+      <span id="bannerText"></span>
+      <button onclick="hideBanner()" class="text-xs opacity-75 hover:opacity-100 ml-4">✕</button>
+    </div>
+  </div>
+
+  <!-- REAL-TIME ROOM REVEAL BANNER -->
+  <div id="roomRevealBanner" class="max-w-6xl mx-auto w-full px-4 pt-3 hidden">
+    <div class="rounded-2xl p-4 bg-emerald-500/15 border-2 border-emerald-400 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <div class="text-xs font-bold uppercase tracking-wider text-emerald-400">⚡ Custom Room ID Published Live!</div>
+        <div id="revealMatchTitle" class="text-lg font-display font-bold text-white"></div>
+        <div class="flex items-center gap-4 mt-1 font-mono-code text-sm">
+          <span>Room ID: <strong id="revealRoomId" class="text-amber-300"></strong></span>
+          <span>Password: <strong id="revealRoomPass" class="text-emerald-300"></strong></span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="copyRevealedRoom()" class="px-4 py-2 rounded-xl bg-emerald-500 text-black font-bold text-xs">
+          Copy Room ID
+        </button>
+        <button onclick="document.getElementById('roomRevealBanner').classList.add('hidden')" class="px-3 py-2 rounded-xl bg-slate-800 text-xs text-slate-300">
+          Dismiss
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="max-w-6xl mx-auto w-full px-4 pt-4">
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 p-1.5 rounded-2xl bg-slate-900/90 border border-slate-800">
+      <button id="tabBtn_arena" onclick="switchTab('arena')" class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition bg-orange-500 text-white">
+        🎮 Arena Lobby
+      </button>
+      <button id="tabBtn_joined" onclick="switchTab('joined')" class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition text-slate-400 hover:text-white">
+        🏆 Joined (<span id="joinedCountBadge">0</span>)
+      </button>
+      <button id="tabBtn_wallet" onclick="switchTab('wallet')" class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition text-slate-400 hover:text-white">
+        💳 3-Bucket Wallet
+      </button>
+      <button id="tabBtn_profile" onclick="switchTab('profile')" class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition text-slate-400 hover:text-white">
+        🎁 Profile & Refer
+      </button>
+      <button id="tabBtn_admin" onclick="switchTab('admin')" class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition text-amber-400 hover:text-white">
+        🛡️ Admin Panel
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="max-w-6xl mx-auto w-full px-4 py-6 flex-1">
+
+    <!-- 1. ARENA LOBBY TAB -->
+    <section id="tab_arena" class="space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2" id="formatFilterContainer"></div>
+        <button onclick="seedOfficialMatches()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-orange-500/40 text-xs font-bold text-orange-400 transition">
+          + 1-Click Seed Official Matches
+        </button>
+      </div>
+
+      <div id="unboundWarningCard" class="rounded-2xl p-4 bg-orange-500/15 border border-orange-500/40 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="text-base font-bold text-orange-400">Mandatory Free Fire MAX UID & IGN Unbound</h3>
+          <p class="text-xs text-slate-300">Bind your 8–12 digit numeric Free Fire UID and In-Game Name in Profile before joining paid rooms.</p>
+        </div>
+        <button onclick="switchTab('profile')" class="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-xs font-bold text-white transition">
+          Bind UID Now
+        </button>
+      </div>
+
+      <div id="matchesGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- 2. JOINED MATCHES TAB -->
+    <section id="tab_joined" class="space-y-4 hidden">
+      <h2 class="text-2xl font-display font-bold">My Joined Tournaments & Room Credentials</h2>
+      <div id="joinedMatchesGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- 3. THREE-BUCKET WALLET TAB -->
+    <section id="tab_wallet" class="space-y-6 hidden">
+      <div class="glass-card rounded-2xl p-6 border border-amber-500/30">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-amber-400">Total Master Wallet Balance</div>
+            <div id="walletMasterBalance" class="text-4xl font-display font-bold text-white mt-1">₹170.00</div>
+          </div>
+          <div class="text-xs text-slate-400 max-w-md">
+            Atomic Fee Deduction Order: <strong class="text-amber-400">1. Up to 10% Bonus</strong> → <strong class="text-cyan-400">2. Deposit</strong> → <strong class="text-emerald-400">3. Winnings</strong>.
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+          <div class="p-4 rounded-xl bg-slate-900/90 border border-cyan-500/30">
+            <div class="text-xs font-bold text-cyan-400">DEPOSIT BUCKET</div>
+            <div id="bucketDeposit" class="text-2xl font-display font-bold text-white mt-1">₹100.00</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">100% Usable for Entry Fees</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900/90 border border-emerald-500/30">
+            <div class="text-xs font-bold text-emerald-400">WINNINGS BUCKET</div>
+            <div id="bucketWinnings" class="text-2xl font-display font-bold text-white mt-1">₹50.00</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">Instant UPI Withdrawable (Min ₹50)</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900/90 border border-amber-500/30">
+            <div class="text-xs font-bold text-amber-400">BONUS BUCKET</div>
+            <div id="bucketBonus" class="text-2xl font-display font-bold text-white mt-1">₹20.00</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">Non-Withdrawable • Uses 10% / Match</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="glass-card rounded-2xl p-5 space-y-4">
+          <h3 class="text-xl font-display font-bold text-white">UPI Deposit + Promo Code Bonus</h3>
+          <div>
+            <label class="text-xs text-slate-300 block mb-1">Deposit Amount (₹10 – ₹1,00,000)</label>
+            <input id="depAmount" type="number" value="100" oninput="updatePromoPreview()" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2.5 text-sm text-white" />
+          </div>
+
+          <div>
+            <label class="text-xs text-slate-300 block mb-1">Active Promo Codes</label>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <button onclick="selectPromo('WELCOME20')" class="px-3 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-xs font-bold text-amber-300">
+                WELCOME20 (+20% up to ₹100)
+              </button>
+              <button onclick="selectPromo('EXN50')" class="px-3 py-1 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-xs font-bold text-cyan-300">
+                EXN50 (+15% up to ₹150)
+              </button>
+            </div>
+            <input id="depPromo" type="text" value="WELCOME20" oninput="updatePromoPreview()" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2 text-sm text-amber-300 font-mono-code uppercase" />
+            <div id="promoPreviewText" class="text-xs text-amber-400 mt-1.5 font-medium"></div>
+          </div>
+
+          <div>
+            <label class="text-xs text-slate-300 block mb-1">12-Digit Numeric UTR Reference</label>
+            <input id="depUtr" type="text" maxlength="12" value="412389012345" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2.5 text-sm text-white font-mono-code" />
+          </div>
+
+          <button onclick="submitDepositWeb()" class="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm transition">
+            Submit UPI Deposit for Approval
+          </button>
+
+          <div id="userDepositsList" class="space-y-2 pt-2"></div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 space-y-4">
+          <h3 class="text-xl font-display font-bold text-white">Withdraw Winnings (Immediate Escrow)</h3>
+          <div>
+            <label class="text-xs text-slate-300 block mb-1">Withdrawal Amount (Min ₹50)</label>
+            <input id="wdAmount" type="number" value="50" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2.5 text-sm text-white" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-300 block mb-1">Receiving UPI ID</label>
+            <input id="wdUpi" type="text" value="survivor@okaxis" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2.5 text-sm text-white" />
+          </div>
+          <button onclick="submitWithdrawalWeb()" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm transition">
+            Request Winnings Withdrawal
+          </button>
+          <div id="userWithdrawalsList" class="space-y-2 pt-2"></div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-5">
+        <h3 class="text-xl font-display font-bold text-white mb-3">Wallet Transaction Ledger</h3>
+        <div id="ledgerList" class="space-y-2"></div>
+      </div>
+    </section>
+
+    <!-- 4. PROFILE & REFER & EARN TAB -->
+    <section id="tab_profile" class="space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="glass-card rounded-2xl p-5 border border-emerald-500/40 space-y-4">
+          <h3 class="text-xl font-display font-bold text-white">🎁 Refer & Earn (Anti-Cheat Program)</h3>
+          <p class="text-xs text-emerald-400">Friend gets ₹5 Signup Bonus • You get ₹10 on their 1st Approved Deposit!</p>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
+              <div class="text-[11px] text-amber-400 font-bold">YOUR REFERRAL CODE</div>
+              <div id="myRefCodeDisplay" class="text-xl font-mono-code font-bold text-white mt-1">EXN7F92A</div>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
+              <div class="text-[11px] text-cyan-400 font-bold">VERIFIED REFERRALS</div>
+              <div id="myRefStatsDisplay" class="text-lg font-display font-bold text-white mt-1">1 Players (₹10)</div>
+            </div>
+          </div>
+
+          <div id="claimReferralBox" class="pt-2 border-t border-slate-800 space-y-2">
+            <label class="text-xs text-slate-300 block">Claim a Friend's Referral Code (+₹5 Instant Bonus):</label>
+            <div class="flex gap-2">
+              <input id="friendRefInput" type="text" value="EXNFRIEND" class="flex-1 rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2 text-sm text-white font-mono-code uppercase" />
+              <button onclick="claimFriendReferralWeb()" class="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold text-xs">
+                Claim ₹5
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 space-y-4">
+          <h3 class="text-xl font-display font-bold text-white">🛡️ Free Fire MAX Identity Binding</h3>
+          <div>
+            <label class="text-xs text-slate-300 block mb-1">Display Username</label>
+            <input id="profUsername" type="text" value="SurvivorPro" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2 text-sm text-white" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-300 block mb-1">Free Fire Numeric UID (8–12 Digits)</label>
+            <input id="profFfUid" type="text" maxlength="12" value="9876543210" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2 text-sm text-white font-mono-code" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-300 block mb-1">Free Fire In-Game Name (IGN)</label>
+            <input id="profFfIgn" type="text" value="EXN_SURVIVOR" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2 text-sm text-white" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-300 block mb-1">Default Payout UPI ID</label>
+            <input id="profUpi" type="text" value="survivor@okaxis" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3.5 py-2 text-sm text-white" />
+          </div>
+          <button onclick="saveProfileBindingWeb()" class="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm transition">
+            Save Free Fire UID & IGN Binding
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. ADMIN DASHBOARD TAB -->
+    <section id="tab_admin" class="space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="glass-card rounded-2xl p-5 space-y-3 border border-orange-500/30">
+          <h3 class="text-xl font-display font-bold text-white">Create & Schedule Tournament</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-slate-400">Title</label>
+              <input id="admTitle" type="text" value="EXN Bermuda Full Map Pro" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-white" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400">Format</label>
+              <select id="admFormat" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-white">
+                <option value="Solo">Solo</option>
+                <option value="1v1">1v1</option>
+                <option value="2v2">2v2 (1 Teammate)</option>
+                <option value="Duo">Duo (1 Teammate)</option>
+                <option value="4v4">4v4 (3 Teammates)</option>
+                <option value="Squad">Squad (3 Teammates)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-slate-400">Entry Fee (₹)</label>
+              <input id="admFee" type="number" value="30" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-white" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400">Prize Pool (₹)</label>
+              <input id="admPool" type="number" value="1000" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-white" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400">Per Kill Rate (₹)</label>
+              <input id="admKill" type="number" value="15" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-white" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400">Rank #1 Prize (₹)</label>
+              <input id="admRank1" type="number" value="300" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-white" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400">Map Name</label>
+              <input id="admMap" type="text" value="Bermuda" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-white" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400">Max Slots</label>
+              <input id="admMax" type="number" value="48" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-white" />
+            </div>
+          </div>
+          <button onclick="adminCreateMatchWeb()" class="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-xs">
+            + Create & Publish Tournament Live
+          </button>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 space-y-4">
+          <h3 class="text-xl font-display font-bold text-white">Pending UTR Deposits & Promo / Referral Unlocks</h3>
+          <div id="adminDepositsQueue" class="space-y-2 max-h-60 overflow-y-auto"></div>
+
+          <h3 class="text-xl font-display font-bold text-white pt-3 border-t border-slate-800">Pending Winnings Withdrawals (Escrow)</h3>
+          <div id="adminWithdrawalsQueue" class="space-y-2 max-h-60 overflow-y-auto"></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="glass-card rounded-2xl p-5 space-y-3">
+          <h3 class="text-xl font-display font-bold text-white">Custom Room ID & Password Live Publisher</h3>
+          <div id="adminRoomPublisherList" class="space-y-3"></div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 space-y-3">
+          <h3 class="text-xl font-display font-bold text-white">1-Click Result Verification & Prize Payouts</h3>
+          <div id="adminClaimsList" class="space-y-3"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- JOIN MATCH MODAL -->
+  <div id="joinModal" class="fixed inset-0 z-50 bg-black/80 hidden items-center justify-center p-4">
+    <div class="glass-card rounded-2xl max-w-md w-full p-6 space-y-4 border border-orange-500/40">
+      <h3 id="joinModalTitle" class="text-xl font-display font-bold text-white">Join Tournament</h3>
+      <div id="joinFeeBreakdownBox" class="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-1"></div>
+      <div id="joinTeammatesBox" class="space-y-2"></div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeJoinModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 text-xs font-bold text-slate-300">Cancel</button>
+        <button id="confirmJoinBtn" onclick="confirmJoinMatchWeb()" class="flex-1 py-2.5 rounded-xl bg-orange-500 text-xs font-bold text-white">Pay & Join</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT CLAIM MODAL -->
+  <div id="claimModal" class="fixed inset-0 z-50 bg-black/80 hidden items-center justify-center p-4">
+    <div class="glass-card rounded-2xl max-w-md w-full p-6 space-y-3 border border-emerald-500/40">
+      <h3 id="claimModalTitle" class="text-xl font-display font-bold text-white">Submit Result Claim & Screenshot</h3>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-slate-300">Claimed Kills</label>
+          <input id="claimKills" type="number" value="5" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-300">Claimed Rank (#1–#48)</label>
+          <input id="claimRank" type="number" value="1" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white" />
+        </div>
+      </div>
+      <div class="pt-2 border-t border-slate-800 space-y-2">
+        <div class="text-xs font-bold text-rose-400">Optional Hacker Report</div>
+        <input id="claimSuspect" type="text" placeholder="Suspect Free Fire IGN (Optional)" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-white" />
+        <input id="claimReason" type="text" placeholder="Evidence / Hack Reason" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-3 py-2 text-xs text-white" />
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeClaimModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 text-xs font-bold text-slate-300">Cancel</button>
+        <button onclick="confirmSubmitClaimWeb()" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-xs font-bold text-black">Submit Claim</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESET / INFO MODAL -->
+  <div id="dbModal" class="fixed inset-0 z-50 bg-black/80 hidden items-center justify-center p-4">
+    <div class="glass-card rounded-2xl max-w-lg w-full p-6 space-y-4 border border-amber-500/40">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xl font-display font-bold text-amber-400">Interactive Website Testing Mode</h3>
+        <button onclick="closeDbModal()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <p class="text-xs text-slate-300">
+        Test every EXALOTE EXN feature right here in Website Mode (Match Join, 3-Bucket Fee Math, Promo Code <code class="text-amber-300">WELCOME20</code>, Refer & Earn +₹5/+₹10 First-Deposit Unlock, Custom Room Live Reveal, and Admin Payouts) without publishing to Google Play Console!
+      </p>
+      <div class="flex justify-end gap-2">
+        <button onclick="resetDemoState()" class="px-4 py-2 rounded-xl bg-rose-500/20 border border-rose-500/40 text-xs font-bold text-rose-300">Reset Test Data</button>
+        <button onclick="closeDbModal()" class="px-5 py-2 rounded-xl bg-amber-400 text-black text-xs font-bold">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PROMO_CODES = {
+      WELCOME20: { code: 'WELCOME20', bonusPercent: 20, maxBonus: 100, minDeposit: 50, isActive: true },
+      EXN50: { code: 'EXN50', bonusPercent: 15, maxBonus: 150, minDeposit: 100, isActive: true }
+    };
+
+    const STORAGE_KEY = 'exalote_exn_web_state_v1';
+
+    function defaultState() {
+      return {
+        user: {
+          userId: 'user_player1',
+          username: 'SurvivorPro',
+          email: 'foodievlog422@gmail.com',
+          ffUid: '9876543210',
+          ffIgn: 'EXN_SURVIVOR',
+          upiId: 'survivor@okaxis',
+          depositBalance: 100.0,
+          winningsBalance: 50.0,
+          bonusBalance: 20.0,
+          walletBalance: 170.0,
+          referralCode: 'EXN7F92A',
+          referredBy: '',
+          referralRewarded: false,
+          totalReferrals: 1,
+          referralBonusEarned: 10.0,
+          isAdmin: true
+        },
+        matches: [
+          {
+            id: 'm_1',
+            title: 'EXN Bermuda Per-Kill Pro',
+            format: 'Solo',
+            mapName: 'Bermuda',
+            session: 'evening',
+            entryFee: 30,
+            prizePool: 1000,
+            perKillRate: 15,
+            rank1Prize: 300,
+            rank2Prize: 150,
+            rank3Prize: 80,
+            maxPlayers: 48,
+            joinedCount: 12,
+            registeredUids: [],
+            status: 'Upcoming',
+            roomId: '',
+            roomPassword: '',
+            roomPublished: false,
+            prizesDistributed: false
+          },
+          {
+            id: 'm_2',
+            title: 'EXN Headshot 2v2 Showdown',
+            format: '2v2',
+            mapName: 'Iron Cage',
+            session: 'evening',
+            entryFee: 50,
+            prizePool: 180,
+            perKillRate: 0,
+            rank1Prize: 180,
+            rank2Prize: 0,
+            rank3Prize: 0,
+            maxPlayers: 4,
+            joinedCount: 1,
+            registeredUids: [],
+            status: 'Upcoming',
+            roomId: '',
+            roomPassword: '',
+            roomPublished: false,
+            prizesDistributed: false
+          }
+        ],
+        registrations: [],
+        claims: [],
+        deposits: [],
+        withdrawals: [],
+        transactions: [
+          { id: 'tx_1', type: 'bonus', amount: 20, description: 'Welcome Signup Bonus Balance' },
+          { id: 'tx_2', type: 'deposit', amount: 100, description: 'Initial Test Deposit Balance' },
+          { id: 'tx_3', type: 'prize_payout', amount: 50, description: 'Initial Test Winnings Balance' }
+        ]
+      };
+    }
+
+    let state = loadState();
+    let activeFormatFilter = 'All';
+    let selectedMatchForJoin = null;
+    let selectedMatchForClaim = null;
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : defaultState();
+      } catch (e) {
+        return defaultState();
+      }
+    }
+
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+      renderAll();
+    }
+
+    function resetDemoState() {
+      state = defaultState();
+      saveState();
+      closeDbModal();
+      showBanner('Reset test data to clean initial balances!', false);
+    }
+
+    function roundCurr(val) {
+      return Math.round(val * 100) / 100;
+    }
+
+    function calculateEntryFeeBreakdown(entryFee, bonusBal, depBal, winBal) {
+      const fee = roundCurr(Math.max(0, entryFee));
+      const usableBonus = roundCurr(Math.min(Math.max(0, bonusBal), roundCurr(fee * 0.10)));
+      const totalUsable = roundCurr(usableBonus + Math.max(0, depBal) + Math.max(0, winBal));
+      if (totalUsable + 0.0001 < fee) {
+        return {
+          entryFee: fee,
+          bonusUsed: usableBonus,
+          depositUsed: roundCurr(Math.min(depBal, fee - usableBonus)),
+          winningsUsed: 0,
+          canAfford: false,
+          shortfall: roundCurr(fee - totalUsable)
+        };
+      }
+      const remAfterBonus = roundCurr(fee - usableBonus);
+      const depUsed = roundCurr(Math.min(depBal, remAfterBonus));
+      const remAfterDep = roundCurr(remAfterBonus - depUsed);
+      const winUsed = roundCurr(Math.min(winBal, remAfterDep));
+      return {
+        entryFee: fee,
+        bonusUsed: usableBonus,
+        depositUsed: depUsed,
+        winningsUsed: winUsed,
+        canAfford: true,
+        shortfall: 0
+      };
+    }
+
+    function showBanner(msg, isError) {
+      const container = document.getElementById('bannerContainer');
+      const box = document.getElementById('bannerBox');
+      const text = document.getElementById('bannerText');
+      container.classList.remove('hidden');
+      box.className = isError
+        ? 'rounded-xl px-4 py-3 flex items-center justify-between text-sm font-medium bg-rose-500/20 border border-rose-500/40 text-rose-300'
+        : 'rounded-xl px-4 py-3 flex items-center justify-between text-sm font-medium bg-emerald-500/20 border border-emerald-500/40 text-emerald-300';
+      text.textContent = msg;
+    }
+
+    function hideBanner() {
+      document.getElementById('bannerContainer').classList.add('hidden');
+    }
+
+    function switchTab(tab) {
+      ['arena', 'joined', 'wallet', 'profile', 'admin'].forEach(t => {
+        document.getElementById('tab_' + t).classList.toggle('hidden', t !== tab);
+        const btn = document.getElementById('tabBtn_' + t);
+        if (t === tab) {
+          btn.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition bg-orange-500 text-white';
+        } else {
+          btn.className = 'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition text-slate-400 hover:text-white';
+        }
+      });
+      renderAll();
+    }
+
+    function toggleAdminRoleForTesting() {
+      state.user.isAdmin = !state.user.isAdmin;
+      saveState();
+      showBanner('Switched active testing role to: ' + (state.user.isAdmin ? 'ADMIN + PLAYER' : 'PLAYER ONLY'), false);
+    }
+
+    function selectPromo(code) {
+      document.getElementById('depPromo').value = code;
+      updatePromoPreview();
+    }
+
+    function updatePromoPreview() {
+      const amt = parseFloat(document.getElementById('depAmount').value || '0');
+      const code = (document.getElementById('depPromo').value || '').trim().toUpperCase();
+      const previewEl = document.getElementById('promoPreviewText');
+      if (!code) {
+        previewEl.textContent = 'No promo code applied.';
+        return;
+      }
+      const promo = PROMO_CODES[code];
+      if (!promo || !promo.isActive) {
+        previewEl.textContent = `Promo code '${code}' is invalid or inactive.`;
+        return;
+      }
+      if (amt < promo.minDeposit) {
+        previewEl.textContent = `Add ₹${(promo.minDeposit - amt).toFixed(0)} more to unlock ${code} (+${promo.bonusPercent}% bonus on min ₹${promo.minDeposit}).`;
+        return;
+      }
+      const bonus = Math.min(roundCurr(amt * (promo.bonusPercent / 100)), promo.maxBonus);
+      previewEl.textContent = `Promo ${code} Active: +₹${bonus.toFixed(2)} Extra Bonus credited to Bonus Balance upon approval!`;
+    }
+
+    function submitDepositWeb() {
+      const amt = roundCurr(parseFloat(document.getElementById('depAmount').value || '0'));
+      const utr = (document.getElementById('depUtr').value || '').trim();
+      const code = (document.getElementById('depPromo').value || '').trim().toUpperCase();
+
+      if (amt < 10 || amt > 100000) return showBanner('Deposit amount must be between ₹10 and ₹1,00,000.', true);
+      if (!/^[0-9]{12}$/.test(utr)) return showBanner('UTR Number must be strictly 12 numeric digits.', true);
+      if (state.deposits.some(d => d.utrNumber === utr)) return showBanner('Duplicate 12-digit UTR Number blocked!', true);
+
+      let bonusAmount = 0;
+      if (code) {
+        const promo = PROMO_CODES[code];
+        if (!promo || !promo.isActive) return showBanner(`Invalid promo code '${code}'.`, true);
+        if (amt < promo.minDeposit) return showBanner(`${code} requires minimum deposit of ₹${promo.minDeposit}.`, true);
+        if (state.deposits.some(d => d.promoCode === code && (d.status === 'Approved' || d.status === 'Pending'))) {
+          return showBanner(`Promo code '${code}' has already been used on your account.`, true);
+        }
+        bonusAmount = Math.min(roundCurr(amt * (promo.bonusPercent / 100)), promo.maxBonus);
+      }
+
+      state.deposits.unshift({
+        id: 'dep_' + Date.now(),
+        username: state.user.username,
+        amount: amt,
+        utrNumber: utr,
+        promoCode: code,
+        bonusAmount: bonusAmount,
+        status: 'Pending'
+      });
+      document.getElementById('depUtr').value = String(Math.floor(100000000000 + Math.random() * 900000000000));
+      saveState();
+      showBanner(`UPI Deposit ₹${amt}${bonusAmount > 0 ? ' (+₹' + bonusAmount + ' ' + code + ' Bonus)' : ''} queued! Approve it in Admin Panel.`, false);
+    }
+
+    function adminDecisionDeposit(depId, approve) {
+      const dep = state.deposits.find(d => d.id === depId);
+      if (!dep || dep.status !== 'Pending') return;
+      if (approve) {
+        dep.status = 'Approved';
+        state.user.depositBalance = roundCurr(state.user.depositBalance + dep.amount);
+        state.user.bonusBalance = roundCurr(state.user.bonusBalance + (dep.bonusAmount || 0));
+        state.user.walletBalance = roundCurr(state.user.depositBalance + state.user.winningsBalance + state.user.bonusBalance);
+
+        state.transactions.unshift({
+          id: 'tx_' + Date.now(),
+          type: 'deposit',
+          amount: dep.amount,
+          description: `UPI Deposit Approved (UTR: ${dep.utrNumber})`
+        });
+
+        if (dep.bonusAmount > 0) {
+          state.transactions.unshift({
+            id: 'tx_b_' + Date.now(),
+            type: 'bonus',
+            amount: dep.bonusAmount,
+            description: `Promo Code ${dep.promoCode} Deposit Bonus (+₹${dep.bonusAmount})`
+          });
+        }
+
+        let refMsg = '';
+        if (state.user.referredBy && !state.user.referralRewarded) {
+          state.user.referralRewarded = true;
+          state.user.totalReferrals += 1;
+          state.user.referralBonusEarned = roundCurr(state.user.referralBonusEarned + 10);
+          refMsg = ' + Unlocked ₹10 First-Deposit Referral Bonus for Referrer!';
+        }
+        saveState();
+        showBanner(`Approved ₹${dep.amount} Deposit${dep.bonusAmount > 0 ? ' + ₹' + dep.bonusAmount + ' Bonus' : ''}${refMsg}`, false);
+      } else {
+        dep.status = 'Rejected';
+        saveState();
+        showBanner('Deposit marked as Rejected.', true);
+      }
+    }
+
+    function submitWithdrawalWeb() {
+      const amt = roundCurr(parseFloat(document.getElementById('wdAmount').value || '0'));
+      const upi = (document.getElementById('wdUpi').value || '').trim();
+      if (amt < 50) return showBanner('Minimum withdrawal amount is ₹50.', true);
+      if (!upi.includes('@')) return showBanner('Enter a valid UPI ID (e.g. player@okaxis).', true);
+      if (state.user.winningsBalance < amt) {
+        return showBanner(`Insufficient Winnings Balance (Available: ₹${state.user.winningsBalance}). Deposit & Bonus are non-withdrawable.`, true);
+      }
+
+      state.user.winningsBalance = roundCurr(state.user.winningsBalance - amt);
+      state.user.walletBalance = roundCurr(state.user.depositBalance + state.user.winningsBalance + state.user.bonusBalance);
+
+      state.withdrawals.unshift({
+        id: 'wd_' + Date.now(),
+        username: state.user.username,
+        amount: amt,
+        upiId: upi,
+        status: 'Pending'
+      });
+      state.transactions.unshift({
+        id: 'tx_' + Date.now(),
+        type: 'withdrawal',
+        amount: amt,
+        description: `Withdrawal Escrow to UPI (${upi})`
+      });
+      saveState();
+      showBanner(`Withdrawal of ₹${amt} placed in escrow from Winnings Balance!`, false);
+    }
+
+    function adminDecisionWithdrawal(wdId, approve) {
+      const wd = state.withdrawals.find(w => w.id === wdId);
+      if (!wd || wd.status !== 'Pending') return;
+      if (approve) {
+        wd.status = 'Completed';
+        saveState();
+        showBanner(`Withdrawal of ₹${wd.amount} marked Completed!`, false);
+      } else {
+        wd.status = 'Rejected';
+        state.user.winningsBalance = roundCurr(state.user.winningsBalance + wd.amount);
+        state.user.walletBalance = roundCurr(state.user.depositBalance + state.user.winningsBalance + state.user.bonusBalance);
+        state.transactions.unshift({
+          id: 'tx_' + Date.now(),
+          type: 'refund',
+          amount: wd.amount,
+          description: `Withdrawal Rejected — Refunded ₹${wd.amount} to Winnings Balance`
+        });
+        saveState();
+        showBanner(`Withdrawal Rejected & ₹${wd.amount} refunded to Winnings Balance!`, false);
+      }
+    }
+
+    function claimFriendReferralWeb() {
+      const code = (document.getElementById('friendRefInput').value || '').trim().toUpperCase();
+      if (code.length < 4) return showBanner('Enter a valid referral code (e.g. EXNFRIEND).', true);
+      if (code === state.user.referralCode) return showBanner('You cannot apply your own referral code.', true);
+      if (state.user.referredBy) return showBanner('You have already claimed a referral code.', true);
+
+      state.user.referredBy = code;
+      state.user.bonusBalance = roundCurr(state.user.bonusBalance + 5);
+      state.user.walletBalance = roundCurr(state.user.depositBalance + state.user.winningsBalance + state.user.bonusBalance);
+      state.transactions.unshift({
+        id: 'tx_' + Date.now(),
+        type: 'bonus',
+        amount: 5,
+        description: `Refer & Earn Signup Bonus (Code: ${code})`
+      });
+      saveState();
+      showBanner(`Referral code ${code} claimed! +₹5.00 credited to your Bonus Balance.`, false);
+    }
+
+    function saveProfileBindingWeb() {
+      const name = document.getElementById('profUsername').value.trim();
+      const uid = document.getElementById('profFfUid').value.trim();
+      const ign = document.getElementById('profFfIgn').value.trim();
+      const upi = document.getElementById('profUpi').value.trim();
+
+      if (!/^[0-9]{8,12}$/.test(uid)) return showBanner('Free Fire UID must be strictly 8–12 numeric digits.', true);
+      if (ign.length < 2) return showBanner('Free Fire IGN is required.', true);
+
+      state.user.username = name || 'Survivor';
+      state.user.ffUid = uid;
+      state.user.ffIgn = ign;
+      state.user.upiId = upi;
+      saveState();
+      showBanner(`Free Fire MAX UID (${uid}) & IGN (${ign}) bound successfully!`, false);
+    }
+
+    function openJoinModal(matchId) {
+      if (!/^[0-9]{8,12}$/.test(state.user.ffUid) || !state.user.ffIgn) {
+        showBanner('Bind your 8–12 digit Free Fire UID & IGN in Profile before joining!', true);
+        switchTab('profile');
+        return;
+      }
+      const match = state.matches.find(m => m.id === matchId);
+      if (!match) return;
+      selectedMatchForJoin = match;
+
+      const b = calculateEntryFeeBreakdown(match.entryFee, state.user.bonusBalance, state.user.depositBalance, state.user.winningsBalance);
+      document.getElementById('joinModalTitle').textContent = `Join ${match.title} (${match.format})`;
+      document.getElementById('joinFeeBreakdownBox').innerHTML = `
+        <div class="font-bold text-amber-400 mb-1">Atomic 3-Bucket Fee Deduction Order</div>
+        <div>1. Bonus Bucket (Max 10%): <strong class="text-white">-₹${b.bonusUsed.toFixed(2)}</strong></div>
+        <div>2. Deposit Bucket: <strong class="text-white">-₹${b.depositUsed.toFixed(2)}</strong></div>
+        <div>3. Winnings Bucket: <strong class="text-white">-₹${b.winningsUsed.toFixed(2)}</strong></div>
+        <div class="pt-1 font-bold ${b.canAfford ? 'text-emerald-400' : 'text-rose-400'}">
+          ${b.canAfford ? `Total Entry Fee: ₹${b.entryFee.toFixed(2)} (Ready)` : `Insufficient Usable Balance (Shortfall: ₹${b.shortfall.toFixed(2)})`}
+        </div>
+      `;
+
+      const reqTeammates = (match.format === '2v2' || match.format === 'Duo') ? 1 : ((match.format === '4v4' || match.format === 'Squad') ? 3 : 0);
+      const mateBox = document.getElementById('joinTeammatesBox');
+      mateBox.innerHTML = '';
+      for (let i = 1; i <= reqTeammates; i++) {
+        mateBox.innerHTML += `
+          <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+            <div class="text-xs font-bold text-cyan-400">Teammate #${i}</div>
+            <input id="mateUid_${i}" type="text" maxlength="12" value="887766554${i}" placeholder="8-12 Digit FF UID" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-white font-mono-code" />
+            <input id="mateIgn_${i}" type="text" value="EXN_MATE_${i}" placeholder="Teammate FF IGN" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-white" />
+          </div>
+        `;
+      }
+
+      document.getElementById('confirmJoinBtn').disabled = !b.canAfford;
+      document.getElementById('joinModal').classList.remove('hidden');
+      document.getElementById('joinModal').classList.add('flex');
+    }
+
+    function closeJoinModal() {
+      document.getElementById('joinModal').classList.add('hidden');
+      document.getElementById('joinModal').classList.remove('flex');
+    }
+
+    function confirmJoinMatchWeb() {
+      const m = selectedMatchForJoin;
+      if (!m) return;
+      if (state.registrations.some(r => r.matchId === m.id)) {
+        closeJoinModal();
+        return showBanner('You have already joined this match!', true);
+      }
+
+      const reqTeammates = (m.format === '2v2' || m.format === 'Duo') ? 1 : ((m.format === '4v4' || m.format === 'Squad') ? 3 : 0);
+      const teamUids = [state.user.ffUid];
+      const teamMembers = [];
+
+      for (let i = 1; i <= reqTeammates; i++) {
+        const tUid = (document.getElementById('mateUid_' + i).value || '').trim();
+        const tIgn = (document.getElementById('mateIgn_' + i).value || '').trim();
+        if (!/^[0-9]{8,12}$/.test(tUid)) return showBanner(`Teammate #${i} UID must be 8–12 digits.`, true);
+        if (tIgn.length < 2) return showBanner(`Teammate #${i} IGN is required.`, true);
+        if (teamUids.includes(tUid) || (m.registeredUids || []).includes(tUid)) {
+          return showBanner(`Duplicate Free Fire UID (${tUid}) blocked!`, true);
+        }
+        teamUids.push(tUid);
+        teamMembers.push(`${tIgn} (${tUid})`);
+      }
+
+      const b = calculateEntryFeeBreakdown(m.entryFee, state.user.bonusBalance, state.user.depositBalance, state.user.winningsBalance);
+      if (!b.canAfford) return showBanner('Insufficient usable balance.', true);
+
+      state.user.bonusBalance = roundCurr(state.user.bonusBalance - b.bonusUsed);
+      state.user.depositBalance = roundCurr(state.user.depositBalance - b.depositUsed);
+      state.user.winningsBalance = roundCurr(state.user.winningsBalance - b.winningsUsed);
+      state.user.walletBalance = roundCurr(state.user.depositBalance + state.user.winningsBalance + state.user.bonusBalance);
+
+      m.joinedCount += 1;
+      m.registeredUids = (m.registeredUids || []).concat(teamUids);
+
+      const slotNumber = m.joinedCount;
+      state.registrations.unshift({
+        id: 'reg_' + Date.now(),
+        matchId: m.id,
+        matchTitle: m.title,
+        slotNumber: slotNumber,
+        status: 'Approved',
+        feeStatus: 'paid',
+        bonusUsed: b.bonusUsed,
+        depositUsed: b.depositUsed,
+        winningsUsed: b.winningsUsed,
+        teamMembers: teamMembers
+      });
+
+      state.transactions.unshift({
+        id: 'tx_' + Date.now(),
+        type: 'entry_fee',
+        amount: b.entryFee,
+        description: `Joined ${m.title} (Slot #${slotNumber} | Bonus: ₹${b.bonusUsed}, Dep: ₹${b.depositUsed}, Win: ₹${b.winningsUsed})`
+      });
+
+      closeJoinModal();
+      saveState();
+      showBanner(`Joined ${m.title}! Assigned Slot #${slotNumber}.`, false);
+    }
+
+    function adminPublishRoomWeb(matchId) {
+      const m = state.matches.find(x => x.id === matchId);
+      if (!m) return;
+      const rId = document.getElementById('admRoomId_' + matchId).value.trim();
+      const rPass = document.getElementById('admRoomPass_' + matchId).value.trim();
+      if (!rId) return showBanner('Enter a Custom Room ID first.', true);
+
+      m.roomId = rId;
+      m.roomPassword = rPass || '1234';
+      m.roomPublished = true;
+      m.status = 'Live';
+      saveState();
+
+      if (state.registrations.some(r => r.matchId === m.id)) {
+        document.getElementById('revealMatchTitle').textContent = m.title + ' (' + m.mapName + ')';
+        document.getElementById('revealRoomId').textContent = m.roomId;
+        document.getElementById('revealRoomPass').textContent = m.roomPassword;
+        document.getElementById('roomRevealBanner').classList.remove('hidden');
+      }
+      showBanner(`Room ID (${m.roomId}) & Password published live to all joined players!`, false);
+    }
+
+    function openClaimModal(matchId) {
+      selectedMatchForClaim = state.matches.find(m => m.id === matchId);
+      if (!selectedMatchForClaim) return;
+      document.getElementById('claimModalTitle').textContent = `Submit Result Claim — ${selectedMatchForClaim.title}`;
+      document.getElementById('claimModal').classList.remove('hidden');
+      document.getElementById('claimModal').classList.add('flex');
+    }
+
+    function closeClaimModal() {
+      document.getElementById('claimModal').classList.add('hidden');
+      document.getElementById('claimModal').classList.remove('flex');
+    }
+
+    function confirmSubmitClaimWeb() {
+      if (!selectedMatchForClaim) return;
+      const kills = parseInt(document.getElementById('claimKills').value || '0', 10);
+      const rank = parseInt(document.getElementById('claimRank').value || '1', 10);
+      const suspect = document.getElementById('claimSuspect').value.trim();
+      const reason = document.getElementById('claimReason').value.trim();
+
+      state.claims.unshift({
+        id: 'clm_' + Date.now(),
+        matchId: selectedMatchForClaim.id,
+        matchTitle: selectedMatchForClaim.title,
+        ffIgn: state.user.ffIgn,
+        ffUid: state.user.ffUid,
+        claimedKills: kills,
+        claimedRank: rank,
+        reportSuspectIgn: suspect,
+        reportReason: reason,
+        status: 'pending',
+        awardedAmount: 0
+      });
+      closeClaimModal();
+      saveState();
+      showBanner('Result claim submitted! Verify & payout in Admin Panel.', false);
+    }
+
+    function adminVerifyClaimWeb(claimId) {
+      const clm = state.claims.find(c => c.id === claimId);
+      if (!clm || clm.status !== 'pending') return;
+      const m = state.matches.find(x => x.id === clm.matchId);
+      if (!m) return;
+
+      const kills = parseInt(document.getElementById('verKills_' + claimId).value || '0', 10);
+      const rank = parseInt(document.getElementById('verRank_' + claimId).value || '1', 10);
+      const rankPrize = rank === 1 ? m.rank1Prize : (rank === 2 ? m.rank2Prize : (rank === 3 ? m.rank3Prize : 0));
+      const totalPrize = roundCurr((kills * m.perKillRate) + rankPrize);
+
+      clm.status = 'verified';
+      clm.claimedKills = kills;
+      clm.claimedRank = rank;
+      clm.awardedAmount = totalPrize;
+
+      state.user.winningsBalance = roundCurr(state.user.winningsBalance + totalPrize);
+      state.user.walletBalance = roundCurr(state.user.depositBalance + state.user.winningsBalance + state.user.bonusBalance);
+
+      state.transactions.unshift({
+        id: 'tx_' + Date.now(),
+        type: 'prize_payout',
+        amount: totalPrize,
+        description: `Won ₹${totalPrize} in ${m.title} (Kills: ${kills}, Rank #${rank})`
+      });
+      saveState();
+      showBanner(`Verified! Credited ₹${totalPrize} strictly to Winnings Balance!`, false);
+    }
+
+    function adminCreateMatchWeb() {
+      const title = document.getElementById('admTitle').value.trim() || 'EXN Custom Match';
+      const format = document.getElementById('admFormat').value;
+      const entryFee = parseFloat(document.getElementById('admFee').value || '25');
+      const prizePool = parseFloat(document.getElementById('admPool').value || '500');
+      const perKillRate = parseFloat(document.getElementById('admKill').value || '10');
+      const rank1Prize = parseFloat(document.getElementById('admRank1').value || '200');
+      const mapName = document.getElementById('admMap').value.trim() || 'Bermuda';
+      const maxPlayers = parseInt(document.getElementById('admMax').value || '48', 10);
+
+      state.matches.unshift({
+        id: 'm_' + Date.now(),
+        title,
+        format,
+        mapName,
+        session: 'evening',
+        entryFee,
+        prizePool,
+        perKillRate,
+        rank1Prize,
+        rank2Prize: roundCurr(rank1Prize * 0.5),
+        rank3Prize: roundCurr(rank1Prize * 0.25),
+        maxPlayers,
+        joinedCount: 0,
+        registeredUids: [],
+        status: 'Upcoming',
+        roomId: '',
+        roomPassword: '',
+        roomPublished: false,
+        prizesDistributed: false
+      });
+      saveState();
+      showBanner(`Created & published '${title}' live!`, false);
+    }
+
+    function seedOfficialMatches() {
+      const presets = [
+        { title: 'EXN Lone Wolf Headshot 1v1', format: '1v1', mapName: 'Iron Cage', entryFee: 40, prizePool: 70, perKillRate: 0, rank1Prize: 70, maxPlayers: 2 },
+        { title: 'EXN Clash Squad 4v4 Finals', format: '4v4', mapName: 'Purgatory', entryFee: 60, prizePool: 400, perKillRate: 0, rank1Prize: 400, maxPlayers: 8 }
+      ];
+      presets.forEach((p, idx) => {
+        state.matches.push({
+          id: 'm_seed_' + Date.now() + '_' + idx,
+          title: p.title,
+          format: p.format,
+          mapName: p.mapName,
+          session: 'evening',
+          entryFee: p.entryFee,
+          prizePool: p.prizePool,
+          perKillRate: p.perKillRate,
+          rank1Prize: p.rank1Prize,
+          rank2Prize: 0,
+          rank3Prize: 0,
+          maxPlayers: p.maxPlayers,
+          joinedCount: 0,
+          registeredUids: [],
+          status: 'Upcoming',
+          roomId: '',
+          roomPassword: '',
+          roomPublished: false,
+          prizesDistributed: false
+        });
+      });
+      saveState();
+      showBanner('Seeded official EXALOTE EXN tournaments live!', false);
+    }
+
+    function copyRevealedRoom() {
+      const rId = document.getElementById('revealRoomId').textContent;
+      showBanner(`Room ID: ${rId}`, false);
+    }
+
+    function openDbModal() {
+      document.getElementById('dbModal').classList.remove('hidden');
+      document.getElementById('dbModal').classList.add('flex');
+    }
+
+    function closeDbModal() {
+      document.getElementById('dbModal').classList.add('hidden');
+      document.getElementById('dbModal').classList.remove('flex');
+    }
+
+    function renderMatchCard(m) {
+      const reg = state.registrations.find(r => r.matchId === m.id);
+      const showRoom = reg && m.roomPublished && m.roomId;
+      return `
+        <div class="glass-card rounded-2xl p-5 space-y-3 border ${reg ? 'border-emerald-500/50' : 'border-slate-800'}">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5">
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-orange-500/20 text-orange-400">${m.format}</span>
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/20 text-cyan-300">${m.mapName}</span>
+            </div>
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${m.status === 'Live' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'}">${m.status}</span>
+          </div>
+
+          <h3 class="text-xl font-display font-bold text-white">${m.title}</h3>
+
+          <div class="grid grid-cols-3 gap-2 text-center p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
+            <div>
+              <div class="text-[10px] text-slate-400">PRIZE POOL</div>
+              <div class="text-sm font-display font-bold text-amber-400">₹${m.prizePool}</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">PER KILL</div>
+              <div class="text-sm font-display font-bold text-cyan-400">₹${m.perKillRate}</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-400">ENTRY FEE</div>
+              <div class="text-sm font-display font-bold text-emerald-400">₹${m.entryFee}</div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span>Slots: <strong class="text-white">${m.joinedCount}/${m.maxPlayers}</strong></span>
+            <span>Rank #1: <strong class="text-amber-300">₹${m.rank1Prize}</strong></span>
+          </div>
+
+          ${showRoom ? `
+            <div class="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 font-mono-code text-xs space-y-1">
+              <div class="text-emerald-400 font-bold">🔓 CUSTOM ROOM CREDENTIALS (APPROVED PLAYER)</div>
+              <div>Room ID: <strong class="text-white">${m.roomId}</strong> • Password: <strong class="text-amber-300">${m.roomPassword}</strong></div>
+            </div>
+          ` : (reg ? `
+            <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-amber-300">
+              🔒 Joined (Slot #${reg.slotNumber}) • Room ID & Password unlock when Admin publishes or 15m before start.
+            </div>
+          ` : '')}
+
+          <div class="flex gap-2 pt-1">
+            ${!reg ? `
+              <button onclick="openJoinModal('${m.id}')" class="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-xs transition">
+                Join Match (₹${m.entryFee})
+              </button>
+            ` : `
+              <button onclick="openClaimModal('${m.id}')" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition">
+                Submit Result Claim / Hack Report
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAll() {
+      document.getElementById('headerWalletTotal').textContent = '₹' + state.user.walletBalance.toFixed(2);
+      document.getElementById('roleBadge').textContent = state.user.isAdmin ? 'ADMIN + PLAYER' : 'PLAYER';
+      document.getElementById('tabBtn_admin').classList.toggle('hidden', !state.user.isAdmin);
+
+      const hasValidBinding = /^[0-9]{8,12}$/.test(state.user.ffUid) && state.user.ffIgn.length >= 2;
+      document.getElementById('ffBindingHeader').textContent = hasValidBinding
+        ? `IGN: ${state.user.ffIgn} (${state.user.ffUid})`
+        : 'FF UID Unbound • Tap Profile';
+      document.getElementById('unboundWarningCard').classList.toggle('hidden', hasValidBinding);
+      document.getElementById('joinedCountBadge').textContent = state.registrations.length;
+
+      const formats = ['All', 'Solo', '1v1', '2v2', 'Duo', 'Squad', '4v4'];
+      document.getElementById('formatFilterContainer').innerHTML = formats.map(f => `
+        <button onclick="activeFormatFilter='${f}'; renderAll();" class="px-3 py-1.5 rounded-xl text-xs font-bold transition ${activeFormatFilter === f ? 'bg-amber-400 text-black' : 'bg-slate-900 text-slate-400 border border-slate-800'}">
+          ${f}
+        </button>
+      `).join('');
+
+      const filtered = activeFormatFilter === 'All'
+        ? state.matches
+        : state.matches.filter(m => m.format === activeFormatFilter);
+      document.getElementById('matchesGrid').innerHTML = filtered.map(renderMatchCard).join('');
+
+      const joinedIds = state.registrations.map(r => r.matchId);
+      const joinedMatches = state.matches.filter(m => joinedIds.includes(m.id));
+      document.getElementById('joinedMatchesGrid').innerHTML = joinedMatches.length
+        ? joinedMatches.map(renderMatchCard).join('')
+        : '<div class="text-sm text-slate-400">You have not joined any matches yet.</div>';
+
+      document.getElementById('walletMasterBalance').textContent = '₹' + state.user.walletBalance.toFixed(2);
+      document.getElementById('bucketDeposit').textContent = '₹' + state.user.depositBalance.toFixed(2);
+      document.getElementById('bucketWinnings').textContent = '₹' + state.user.winningsBalance.toFixed(2);
+      document.getElementById('bucketBonus').textContent = '₹' + state.user.bonusBalance.toFixed(2);
+      updatePromoPreview();
+
+      document.getElementById('userDepositsList').innerHTML = state.deposits.map(d => `
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+          <div>
+            <div class="font-bold text-white">Deposit ₹${d.amount} ${d.bonusAmount > 0 ? `<span class="text-amber-400">(+₹${d.bonusAmount} ${d.promoCode})</span>` : ''}</div>
+            <div class="text-slate-400 font-mono-code">UTR: ${d.utrNumber}</div>
+          </div>
+          <span class="px-2.5 py-0.5 rounded-full font-bold ${d.status === 'Approved' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'}">${d.status}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('userWithdrawalsList').innerHTML = state.withdrawals.map(w => `
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+          <div>
+            <div class="font-bold text-white">Withdraw ₹${w.amount}</div>
+            <div class="text-slate-400">UPI: ${w.upiId}</div>
+          </div>
+          <span class="px-2.5 py-0.5 rounded-full font-bold ${w.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-300'}">${w.status}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('ledgerList').innerHTML = state.transactions.map(tx => {
+        const isCredit = ['deposit', 'prize_payout', 'refund', 'bonus'].includes(tx.type);
+        return `
+          <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+            <div>
+              <div class="font-semibold text-white">${tx.description}</div>
+              <div class="text-[10px] uppercase text-slate-400">${tx.type}</div>
+            </div>
+            <div class="font-display font-bold text-base ${isCredit ? 'text-emerald-400' : 'text-orange-400'}">
+              ${isCredit ? '+' : '-'}₹${tx.amount}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('myRefCodeDisplay').textContent = state.user.referralCode;
+      document.getElementById('myRefStatsDisplay').textContent = `${state.user.totalReferrals} Players (₹${state.user.referralBonusEarned})`;
+
+      if (state.user.referredBy) {
+        document.getElementById('claimReferralBox').innerHTML = `
+          <div class="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-xs text-emerald-300 font-semibold">
+            ✓ Referral Code (${state.user.referredBy}) Claimed (+₹5 Bonus Credited) • ${state.user.referralRewarded ? '1st Deposit Bonus Unlocked for Referrer!' : 'Referrer unlocks +₹10 on your 1st Approved Deposit'}
+          </div>
+        `;
+      }
+
+      document.getElementById('adminDepositsQueue').innerHTML = state.deposits.length ? state.deposits.map(d => `
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2 text-xs">
+          <div>
+            <div class="font-bold text-white">${d.username} • ₹${d.amount} ${d.bonusAmount > 0 ? `<span class="text-emerald-400">(+₹${d.bonusAmount} ${d.promoCode} Bonus)</span>` : ''}</div>
+            <div class="text-amber-400 font-mono-code">UTR: ${d.utrNumber}</div>
+          </div>
+          ${d.status === 'Pending' ? `
+            <div class="flex gap-1.5">
+              <button onclick="adminDecisionDeposit('${d.id}', true)" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-bold">Approve</button>
+              <button onclick="adminDecisionDeposit('${d.id}', false)" class="px-2.5 py-1.5 rounded-lg bg-rose-500/20 text-rose-300">Reject</button>
+            </div>
+          ` : `<span class="text-slate-400 font-bold">${d.status}</span>`}
+        </div>
+      `).join('') : '<div class="text-xs text-slate-500">No deposit requests yet.</div>';
+
+      document.getElementById('adminWithdrawalsQueue').innerHTML = state.withdrawals.length ? state.withdrawals.map(w => `
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2 text-xs">
+          <div>
+            <div class="font-bold text-white">${w.username} • ₹${w.amount}</div>
+            <div class="text-cyan-400">UPI: ${w.upiId}</div>
+          </div>
+          ${w.status === 'Pending' ? `
+            <div class="flex gap-1.5">
+              <button onclick="adminDecisionWithdrawal('${w.id}', true)" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-black font-bold">Mark Paid</button>
+              <button onclick="adminDecisionWithdrawal('${w.id}', false)" class="px-2.5 py-1.5 rounded-lg bg-rose-500/20 text-rose-300">Reject & Refund</button>
+            </div>
+          ` : `<span class="text-slate-400 font-bold">${w.status}</span>`}
+        </div>
+      `).join('') : '<div class="text-xs text-slate-500">No withdrawal requests yet.</div>';
+
+      document.getElementById('adminRoomPublisherList').innerHTML = state.matches.map(m => `
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2 text-xs">
+          <div class="flex justify-between">
+            <strong class="text-white">${m.title} (${m.format})</strong>
+            <span class="${m.roomPublished ? 'text-emerald-400' : 'text-amber-400'} font-bold">${m.roomPublished ? 'ROOM LIVE' : 'HIDDEN'}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <input id="admRoomId_${m.id}" type="text" value="${m.roomId || '88991122'}" placeholder="Custom Room ID" class="rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-white font-mono-code" />
+            <input id="admRoomPass_${m.id}" type="text" value="${m.roomPassword || '7788'}" placeholder="Password" class="rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-white font-mono-code" />
+          </div>
+          <button onclick="adminPublishRoomWeb('${m.id}')" class="w-full py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold">
+            Publish Room ID & Password Live
+          </button>
+        </div>
+      `).join('');
+
+      document.getElementById('adminClaimsList').innerHTML = state.claims.length ? state.claims.map(c => `
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2 text-xs">
+          <div class="flex justify-between">
+            <strong class="text-white">${c.ffIgn} (${c.ffUid}) • ${c.matchTitle}</strong>
+            <span class="font-bold ${c.status === 'verified' ? 'text-emerald-400' : 'text-amber-400'}">${c.status.toUpperCase()}</span>
+          </div>
+          ${c.reportSuspectIgn ? `<div class="p-2 rounded bg-rose-500/20 text-rose-300">⚠️ Hack Report vs ${c.reportSuspectIgn}: ${c.reportReason}</div>` : ''}
+          ${c.status === 'pending' ? `
+            <div class="grid grid-cols-2 gap-2">
+              <input id="verKills_${c.id}" type="number" value="${c.claimedKills}" class="rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-white" />
+              <input id="verRank_${c.id}" type="number" value="${c.claimedRank}" class="rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-white" />
+            </div>
+            <button onclick="adminVerifyClaimWeb('${c.id}')" class="w-full py-2 rounded-lg bg-emerald-500 text-black font-bold">
+              Verify & Credit Winnings Balance
+            </button>
+          ` : `<div class="text-emerald-400 font-bold">Credited ₹${c.awardedAmount} to Winnings</div>`}
+        </div>
+      `).join('') : '<div class="text-xs text-slate-500">No player result claims submitted yet.</div>';
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>

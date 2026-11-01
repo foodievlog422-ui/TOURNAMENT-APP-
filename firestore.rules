@@ -1,0 +1,541 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() {
+      return request.resource.data;
+    }
+    function existing() {
+      return resource.data;
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isNumber(val) {
+      return val is int || val is float;
+    }
+    function isBootstrappedAdmin() {
+      return isSignedIn() &&
+             'email_verified' in request.auth.token &&
+             request.auth.token.email_verified == true &&
+             'email' in request.auth.token &&
+             request.auth.token.email == 'foodievlog422@gmail.com';
+    }
+    function isAdmin() {
+      return isSignedIn() && (
+        isBootstrappedAdmin() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // 1. Validation Blueprint: AdminRecord
+    function isValidAdminRecord(data) {
+      return data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 120 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list: if isAdmin() && existing().uid is string;
+      allow create: if isAdmin() &&
+                       isValidId(adminId) &&
+                       incoming().keys().hasAll(['uid', 'email', 'createdAt']) &&
+                       incoming().keys().hasOnly(['uid', 'email', 'createdAt']) &&
+                       incoming().uid == adminId &&
+                       isValidAdminRecord(incoming());
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(adminId);
+    }
+
+    // 2. Validation Blueprint: UserProfile
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.username is string && data.username.size() >= 1 && data.username.size() <= 60 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 120 &&
+             data.ffUid is string && data.ffUid.size() <= 12 &&
+             (data.ffUid.size() == 0 || data.ffUid.matches('^[0-9]{8,12}$')) &&
+             data.ffIgn is string && data.ffIgn.size() <= 60 &&
+             data.upiId is string && data.upiId.size() <= 100 &&
+             (data.upiId.size() == 0 || data.upiId.matches('^[a-zA-Z0-9.\\-_]{2,256}@[a-zA-Z]{2,64}$')) &&
+             isNumber(data.depositBalance) && data.depositBalance >= 0 && data.depositBalance <= 10000000 &&
+             isNumber(data.winningsBalance) && data.winningsBalance >= 0 && data.winningsBalance <= 10000000 &&
+             isNumber(data.bonusBalance) && data.bonusBalance >= 0 && data.bonusBalance <= 10000000 &&
+             isNumber(data.walletBalance) && data.walletBalance >= 0 && data.walletBalance <= 30000000 &&
+             (!('referralCode' in data) || (data.referralCode is string && data.referralCode.size() <= 20)) &&
+             (!('referredBy' in data) || (data.referredBy is string && data.referredBy.size() <= 128)) &&
+             (!('referralRewarded' in data) || data.referralRewarded is bool) &&
+             (!('totalReferrals' in data) || (data.totalReferrals is int && data.totalReferrals >= 0 && data.totalReferrals <= 100000)) &&
+             (!('referralBonusEarned' in data) || (isNumber(data.referralBonusEarned) && data.referralBonusEarned >= 0 && data.referralBonusEarned <= 1000000)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       incoming().userId == userId &&
+                       (request.auth.uid == userId || isAdmin()) &&
+                       incoming().keys().hasAll([
+                         'userId', 'username', 'email', 'ffUid', 'ffIgn', 'upiId',
+                         'depositBalance', 'winningsBalance', 'bonusBalance', 'walletBalance',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'username', 'email', 'ffUid', 'ffIgn', 'upiId',
+                         'depositBalance', 'winningsBalance', 'bonusBalance', 'walletBalance',
+                         'referralCode', 'referredBy', 'referralRewarded', 'totalReferrals', 'referralBonusEarned',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidUserProfile(incoming()) &&
+                       (
+                         isAdmin() ||
+                         (
+                           request.auth.uid == userId &&
+                           incoming().depositBalance == 0 &&
+                           incoming().winningsBalance == 0 &&
+                           incoming().bonusBalance >= 0 &&
+                           incoming().bonusBalance <= 50 &&
+                           incoming().walletBalance == incoming().bonusBalance &&
+                           (!('referralRewarded' in incoming()) || incoming().referralRewarded == false) &&
+                           (!('totalReferrals' in incoming()) || incoming().totalReferrals == 0) &&
+                           (!('referralBonusEarned' in incoming()) || incoming().referralBonusEarned == 0)
+                         )
+                       );
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().email == existing().email &&
+                       incoming().createdAt == existing().createdAt && (
+                         // Branch 1: Admin balance/profile/referral management
+                         (isAdmin() &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'username', 'ffUid', 'ffIgn', 'upiId',
+                            'depositBalance', 'winningsBalance', 'bonusBalance', 'walletBalance',
+                            'referralCode', 'referredBy', 'referralRewarded', 'totalReferrals', 'referralBonusEarned',
+                            'updatedAt'
+                          ])) ||
+                         // Branch 2: Owner updating FF UID, FF IGN, username, UPI ID, or backfilling referralCode
+                         (request.auth.uid == userId &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'username', 'ffUid', 'ffIgn', 'upiId', 'referralCode', 'updatedAt'
+                          ])) ||
+                         // Branch 3: Owner deducting entry fee or withdrawal escrow (cannot increase balances)
+                         (request.auth.uid == userId &&
+                          incoming().depositBalance <= existing().depositBalance &&
+                          incoming().winningsBalance <= existing().winningsBalance &&
+                          incoming().bonusBalance <= existing().bonusBalance &&
+                          incoming().walletBalance <= existing().walletBalance &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'depositBalance', 'winningsBalance', 'bonusBalance', 'walletBalance', 'updatedAt'
+                          ])) ||
+                         // Branch 4: Owner one-time Referral Code claim (+5 INR to bonusBalance only when referredBy was empty)
+                         (request.auth.uid == userId &&
+                          (!('referredBy' in existing()) || existing().referredBy == '') &&
+                          'referredBy' in incoming() && incoming().referredBy is string &&
+                          incoming().referredBy.size() >= 1 && incoming().referredBy != userId &&
+                          incoming().depositBalance == existing().depositBalance &&
+                          incoming().winningsBalance == existing().winningsBalance &&
+                          incoming().bonusBalance == existing().bonusBalance + 5 &&
+                          incoming().walletBalance == existing().walletBalance + 5 &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'referredBy', 'bonusBalance', 'walletBalance', 'updatedAt'
+                          ]))
+                       );
+
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // 2B. Validation Blueprint: ReferralCodeLookup
+    function isValidReferralCodeLookup(data) {
+      return data.code is string && data.code.size() >= 4 && data.code.size() <= 20 &&
+             data.code.matches('^[A-Z0-9]+$') &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.username is string && data.username.size() >= 1 && data.username.size() <= 60 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /referral_codes/{code} {
+      allow get: if isSignedIn() && isValidId(code);
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                       isValidId(code) &&
+                       incoming().code == code &&
+                       (incoming().userId == request.auth.uid || isAdmin()) &&
+                       incoming().keys().hasAll(['code', 'userId', 'username', 'createdAt']) &&
+                       incoming().keys().hasOnly(['code', 'userId', 'username', 'createdAt']) &&
+                       isValidReferralCodeLookup(incoming());
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(code);
+    }
+
+    // 2C. Validation Blueprint: PromoCode
+    function isValidPromoCode(data) {
+      return data.code is string && data.code.size() >= 3 && data.code.size() <= 30 &&
+             data.code.matches('^[A-Z0-9_\\-]+$') &&
+             data.bonusPercent is int && data.bonusPercent >= 1 && data.bonusPercent <= 100 &&
+             isNumber(data.maxBonus) && data.maxBonus >= 1 && data.maxBonus <= 10000 &&
+             isNumber(data.minDeposit) && data.minDeposit >= 10 && data.minDeposit <= 100000 &&
+             data.isActive is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /promo_codes/{code} {
+      allow get: if isSignedIn() && isValidId(code);
+      allow list: if isSignedIn() && (existing().isActive == true || isAdmin());
+      allow create: if isAdmin() &&
+                       isValidId(code) &&
+                       incoming().code == code &&
+                       incoming().keys().hasAll([
+                         'code', 'bonusPercent', 'maxBonus', 'minDeposit', 'isActive', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'code', 'bonusPercent', 'maxBonus', 'minDeposit', 'isActive', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidPromoCode(incoming());
+      allow update: if isAdmin() &&
+                       isValidId(code) &&
+                       isValidPromoCode(incoming()) &&
+                       incoming().code == existing().code &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'bonusPercent', 'maxBonus', 'minDeposit', 'isActive', 'updatedAt'
+                       ]);
+      allow delete: if isAdmin() && isValidId(code);
+    }
+
+    // 3. Validation Blueprint: TournamentMatch
+    function isValidTournamentMatch(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.categoryCode is string && data.categoryCode.size() >= 1 && data.categoryCode.size() <= 60 &&
+             data.categoryName is string && data.categoryName.size() >= 1 && data.categoryName.size() <= 100 &&
+             data.format is string && data.format in ['Solo', '1v1', '2v2', 'Duo', 'Squad', '4v4'] &&
+             data.session is string && data.session in ['morning', 'evening'] &&
+             data.matchDate is string && data.matchDate.size() >= 8 && data.matchDate.size() <= 20 &&
+             data.startTime is string && data.startTime.size() >= 4 && data.startTime.size() <= 20 &&
+             data.startTimeEpochMs is int && data.startTimeEpochMs >= 0 &&
+             data.maxPlayers is int && data.maxPlayers >= 2 && data.maxPlayers <= 100 &&
+             data.joinedCount is int && data.joinedCount >= 0 && data.joinedCount <= data.maxPlayers &&
+             data.registeredUids is list && data.registeredUids.size() <= 100 &&
+             (data.registeredUids.size() == 0 || data.registeredUids[0] is string) &&
+             isNumber(data.entryFee) && data.entryFee >= 0 && data.entryFee <= 100000 &&
+             isNumber(data.prizePool) && data.prizePool >= 0 && data.prizePool <= 1000000 &&
+             isNumber(data.perKillRate) && data.perKillRate >= 0 && data.perKillRate <= 100000 &&
+             isNumber(data.rank1Prize) && data.rank1Prize >= 0 && data.rank1Prize <= 1000000 &&
+             isNumber(data.rank2Prize) && data.rank2Prize >= 0 && data.rank2Prize <= 1000000 &&
+             isNumber(data.rank3Prize) && data.rank3Prize >= 0 && data.rank3Prize <= 1000000 &&
+             data.status is string && data.status in ['Upcoming', 'Registration Closed', 'Live', 'Completed', 'Cancelled'] &&
+             data.roomId is string && data.roomId.size() <= 50 &&
+             data.roomPassword is string && data.roomPassword.size() <= 50 &&
+             data.roomPublished is bool &&
+             data.mapName is string && data.mapName.size() >= 1 && data.mapName.size() <= 50 &&
+             data.matchRules is string && data.matchRules.size() <= 1000 &&
+             data.prizesDistributed is bool &&
+             data.published is bool &&
+             data.createdBy is string && data.createdBy.size() >= 1 && data.createdBy.size() <= 128 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /matches/{matchId} {
+      allow get: if isSignedIn() && isValidId(matchId) && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+
+      allow create: if isAdmin() &&
+                       isValidId(matchId) &&
+                       incoming().createdBy == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'title', 'categoryCode', 'categoryName', 'format', 'session',
+                         'matchDate', 'startTime', 'startTimeEpochMs', 'maxPlayers',
+                         'joinedCount', 'registeredUids', 'entryFee', 'prizePool',
+                         'perKillRate', 'rank1Prize', 'rank2Prize', 'rank3Prize',
+                         'status', 'roomId', 'roomPassword', 'roomPublished',
+                         'mapName', 'matchRules', 'prizesDistributed', 'published',
+                         'createdBy', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'title', 'categoryCode', 'categoryName', 'format', 'session',
+                         'matchDate', 'startTime', 'startTimeEpochMs', 'maxPlayers',
+                         'joinedCount', 'registeredUids', 'entryFee', 'prizePool',
+                         'perKillRate', 'rank1Prize', 'rank2Prize', 'rank3Prize',
+                         'status', 'roomId', 'roomPassword', 'roomPublished',
+                         'mapName', 'matchRules', 'prizesDistributed', 'published',
+                         'createdBy', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidTournamentMatch(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(matchId) &&
+                       isValidTournamentMatch(incoming()) &&
+                       incoming().createdBy == existing().createdBy &&
+                       incoming().createdAt == existing().createdAt && (
+                         // Branch 1: Admin match management (respecting prize distribution lock)
+                         (isAdmin() &&
+                          (!existing().prizesDistributed || incoming().prizesDistributed == true) &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'title', 'categoryCode', 'categoryName', 'format', 'session',
+                            'matchDate', 'startTime', 'startTimeEpochMs', 'maxPlayers',
+                            'joinedCount', 'registeredUids', 'entryFee', 'prizePool',
+                            'perKillRate', 'rank1Prize', 'rank2Prize', 'rank3Prize',
+                            'status', 'roomId', 'roomPassword', 'roomPublished',
+                            'mapName', 'matchRules', 'prizesDistributed', 'published',
+                            'updatedAt'
+                          ])) ||
+                         // Branch 2: Player atomic slot join increment on Upcoming match
+                         (existing().status == 'Upcoming' &&
+                          incoming().joinedCount == existing().joinedCount + 1 &&
+                          incoming().joinedCount <= existing().maxPlayers &&
+                          incoming().registeredUids.size() > existing().registeredUids.size() &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'joinedCount', 'registeredUids', 'updatedAt'
+                          ]))
+                       );
+
+      allow delete: if isAdmin() && isValidId(matchId);
+    }
+
+    // 4. Validation Blueprint: MatchRegistration
+    function isValidMatchRegistration(data) {
+      return data.matchId is string && data.matchId.size() >= 1 && data.matchId.size() <= 128 &&
+             data.matchTitle is string && data.matchTitle.size() >= 1 && data.matchTitle.size() <= 150 &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.username is string && data.username.size() >= 1 && data.username.size() <= 60 &&
+             data.ffUid is string && data.ffUid.matches('^[0-9]{8,12}$') &&
+             data.ffIgn is string && data.ffIgn.size() >= 1 && data.ffIgn.size() <= 60 &&
+             data.status is string && data.status in ['Approved', 'Pending', 'Rejected'] &&
+             data.feeStatus is string && data.feeStatus in ['none', 'paid', 'refunded'] &&
+             isNumber(data.entryFeePaid) && data.entryFeePaid >= 0 && data.entryFeePaid <= 100000 &&
+             isNumber(data.bonusUsed) && data.bonusUsed >= 0 && data.bonusUsed <= 100000 &&
+             isNumber(data.depositUsed) && data.depositUsed >= 0 && data.depositUsed <= 100000 &&
+             isNumber(data.winningsUsed) && data.winningsUsed >= 0 && data.winningsUsed <= 100000 &&
+             data.slotNumber is int && data.slotNumber >= 1 && data.slotNumber <= 100 &&
+             data.teamMembers is list && data.teamMembers.size() <= 4 &&
+             (data.teamMembers.size() == 0 || data.teamMembers[0] is string) &&
+             data.allUids is list && data.allUids.size() >= 1 && data.allUids.size() <= 4 &&
+             data.allUids[0] is string &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /registrations/{registrationId} {
+      allow get: if isSignedIn() && isValidId(registrationId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(registrationId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'matchId', 'matchTitle', 'userId', 'username', 'ffUid', 'ffIgn',
+                         'status', 'feeStatus', 'entryFeePaid', 'bonusUsed', 'depositUsed',
+                         'winningsUsed', 'slotNumber', 'teamMembers', 'allUids',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'matchId', 'matchTitle', 'userId', 'username', 'ffUid', 'ffIgn',
+                         'status', 'feeStatus', 'entryFeePaid', 'bonusUsed', 'depositUsed',
+                         'winningsUsed', 'slotNumber', 'teamMembers', 'allUids',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidMatchRegistration(incoming()) &&
+                       exists(/databases/$(database)/documents/matches/$(incoming().matchId));
+
+      allow update: if isSignedIn() &&
+                       isValidId(registrationId) &&
+                       isValidMatchRegistration(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().matchId == existing().matchId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isAdmin() &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'status', 'feeStatus', 'slotNumber', 'updatedAt'
+                       ]);
+
+      allow delete: if isAdmin() && isValidId(registrationId);
+    }
+
+    // 5. Validation Blueprint: MatchClaim
+    function isValidMatchClaim(data) {
+      return data.matchId is string && data.matchId.size() >= 1 && data.matchId.size() <= 128 &&
+             data.matchTitle is string && data.matchTitle.size() >= 1 && data.matchTitle.size() <= 150 &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.username is string && data.username.size() >= 1 && data.username.size() <= 60 &&
+             data.ffUid is string && data.ffUid.matches('^[0-9]{8,12}$') &&
+             data.ffIgn is string && data.ffIgn.size() >= 1 && data.ffIgn.size() <= 60 &&
+             data.claimedKills is int && data.claimedKills >= 0 && data.claimedKills <= 100 &&
+             data.claimedRank is int && data.claimedRank >= 1 && data.claimedRank <= 100 &&
+             data.screenshotBase64 is string && data.screenshotBase64.size() <= 150000 &&
+             data.screenshotMime is string && data.screenshotMime.size() <= 40 &&
+             data.reportSuspectIgn is string && data.reportSuspectIgn.size() <= 100 &&
+             data.reportReason is string && data.reportReason.size() <= 500 &&
+             data.status is string && data.status in ['pending', 'verified', 'rejected'] &&
+             isNumber(data.awardedAmount) && data.awardedAmount >= 0 && data.awardedAmount <= 1000000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /claims/{claimId} {
+      allow get: if isSignedIn() && isValidId(claimId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(claimId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().status == 'pending' &&
+                       incoming().awardedAmount == 0 &&
+                       incoming().keys().hasAll([
+                         'matchId', 'matchTitle', 'userId', 'username', 'ffUid', 'ffIgn',
+                         'claimedKills', 'claimedRank', 'screenshotBase64', 'screenshotMime',
+                         'reportSuspectIgn', 'reportReason', 'status', 'awardedAmount',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'matchId', 'matchTitle', 'userId', 'username', 'ffUid', 'ffIgn',
+                         'claimedKills', 'claimedRank', 'screenshotBase64', 'screenshotMime',
+                         'reportSuspectIgn', 'reportReason', 'status', 'awardedAmount',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidMatchClaim(incoming()) &&
+                       exists(/databases/$(database)/documents/matches/$(incoming().matchId));
+
+      allow update: if isSignedIn() &&
+                       isValidId(claimId) &&
+                       isValidMatchClaim(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().matchId == existing().matchId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isAdmin() &&
+                       existing().status == 'pending' &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'claimedKills', 'claimedRank', 'status', 'awardedAmount', 'updatedAt'
+                       ]);
+
+      allow delete: if isAdmin() && isValidId(claimId);
+    }
+
+    // 6. Validation Blueprint: DepositRequest
+    function isValidDepositRequest(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.username is string && data.username.size() >= 1 && data.username.size() <= 60 &&
+             isNumber(data.amount) && data.amount >= 10 && data.amount <= 100000 &&
+             data.utrNumber is string && data.utrNumber.matches('^[0-9]{12}$') &&
+             (!('promoCode' in data) || (data.promoCode is string && data.promoCode.size() <= 30)) &&
+             (!('bonusAmount' in data) || (isNumber(data.bonusAmount) && data.bonusAmount >= 0 && data.bonusAmount <= 10000)) &&
+             data.status is string && data.status in ['Pending', 'Approved', 'Rejected'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /deposits/{depositId} {
+      allow get: if isSignedIn() && isValidId(depositId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(depositId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().status == 'Pending' &&
+                       incoming().keys().hasAll([
+                         'userId', 'username', 'amount', 'utrNumber', 'status', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'username', 'amount', 'utrNumber', 'promoCode', 'bonusAmount', 'status', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidDepositRequest(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(depositId) &&
+                       isValidDepositRequest(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().utrNumber == existing().utrNumber &&
+                       incoming().amount == existing().amount &&
+                       incoming().createdAt == existing().createdAt &&
+                       isAdmin() &&
+                       existing().status == 'Pending' &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+
+      allow delete: if isAdmin() && isValidId(depositId);
+    }
+
+    // 7. Validation Blueprint: WithdrawalRequest
+    function isValidWithdrawalRequest(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.username is string && data.username.size() >= 1 && data.username.size() <= 60 &&
+             isNumber(data.amount) && data.amount >= 50 && data.amount <= 100000 &&
+             data.upiId is string && data.upiId.size() >= 3 && data.upiId.size() <= 100 &&
+             data.upiId.matches('^[a-zA-Z0-9.\\-_]{2,256}@[a-zA-Z]{2,64}$') &&
+             data.status is string && data.status in ['Pending', 'Completed', 'Rejected'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /withdrawals/{withdrawalId} {
+      allow get: if isSignedIn() && isValidId(withdrawalId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(withdrawalId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().status == 'Pending' &&
+                       incoming().keys().hasAll([
+                         'userId', 'username', 'amount', 'upiId', 'status', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'username', 'amount', 'upiId', 'status', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidWithdrawalRequest(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(withdrawalId) &&
+                       isValidWithdrawalRequest(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().amount == existing().amount &&
+                       incoming().upiId == existing().upiId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isAdmin() &&
+                       existing().status == 'Pending' &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+
+      allow delete: if isAdmin() && isValidId(withdrawalId);
+    }
+
+    // 8. Validation Blueprint: WalletTransaction
+    function isValidWalletTransaction(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.type is string && data.type in ['deposit', 'withdrawal', 'entry_fee', 'prize_payout', 'refund', 'bonus'] &&
+             isNumber(data.amount) && data.amount >= 0 && data.amount <= 1000000 &&
+             data.description is string && data.description.size() >= 1 && data.description.size() <= 200 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /transactions/{transactionId} {
+      allow get: if isSignedIn() && isValidId(transactionId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(transactionId) &&
+                       (incoming().userId == request.auth.uid || isAdmin()) &&
+                       incoming().keys().hasAll([
+                         'userId', 'type', 'amount', 'description', 'createdAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'type', 'amount', 'description', 'createdAt'
+                       ]) &&
+                       isValidWalletTransaction(incoming());
+
+      allow update, delete: if false;
+    }
+  }
+}
